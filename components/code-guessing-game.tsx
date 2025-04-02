@@ -12,7 +12,8 @@ import { functionChallenges } from "@/lib/function-challenges"
 import confetti from "canvas-confetti"
 import { cn } from "@/lib/utils"
 import MatrixParticles from "@/components/MatrixParticles"
-import WhoaOverlay from "@/components/WhoaOverlay"
+import ErrorFlash from '@/components/ErrorFlash'
+import { AnswerCombobox } from '@/components/AnswerCombobox'
 
 // Local storage keys
 const COMPLETED_CHALLENGES_KEY = "codele-completed-challenges"
@@ -33,7 +34,7 @@ export default function CodeGuessingGame() {
   const [lastPlayedDate, setLastPlayedDate] = useState<string | null>(null)
   const [gameMode, setGameMode] = useState<"daily">('daily')
   const [shuffledOptions, setShuffledOptions] = useState<string[]>([])
-  const [showWhoa, setShowWhoa] = useState(false)
+  const [showError, setShowError] = useState(false)
   const [isTimeUp, setIsTimeUp] = useState(false)
 
   const maxRevealLevel = 5
@@ -252,8 +253,8 @@ export default function CodeGuessingGame() {
         setCompletedChallenges((prev) => [...prev, currentChallengeId])
       }
     } else {
-      // Show whoa overlay for incorrect answers
-      setShowWhoa(true)
+      // Show error flash for incorrect answers
+      setShowError(true)
       if (revealLevel < maxRevealLevel) {
         setRevealLevel((prevLevel) => prevLevel + 1)
       }
@@ -277,8 +278,8 @@ export default function CodeGuessingGame() {
         setIsTimeUp(true);
         setIsTimerRunning(false);
         
-        // Show the whoa video
-        setShowWhoa(true);
+        // Show the error flash
+        setShowError(true);
       }
     }
   }
@@ -449,11 +450,6 @@ export default function CodeGuessingGame() {
                 revealLevel === maxRevealLevel - 1 ? "bg-yellow-900/20" : "bg-[#1a1a1a]",
                 revealLevel >= maxRevealLevel ? "bg-red-900/20" : ""
               )}
-              indicatorClassName={cn(
-                "transition-all duration-300",
-                revealLevel === maxRevealLevel - 1 ? "bg-yellow-400" : "bg-[#00ff00]",
-                revealLevel >= maxRevealLevel ? "bg-red-400" : ""
-              )}
             />
             {revealLevel < maxRevealLevel && (
               <div className="absolute -right-2 -top-1 animate-bounce">
@@ -534,47 +530,12 @@ export default function CodeGuessingGame() {
                   </div>
 
                   <div className="space-y-4">
-                    <Select
+                    <AnswerCombobox
                       value={selectedAnswer}
-                      onValueChange={setSelectedAnswer}
+                      onSelect={setSelectedAnswer}
+                      currentOptions={shuffledOptions}
                       disabled={feedback === "correct" || gameOver}
-                    >
-                      <SelectTrigger
-                        className={cn(
-                          "w-full bg-[#121212] text-white border-[#333333] h-12",
-                          "hover:border-[#00ff00] transition-colors duration-200",
-                          "focus:ring-1 focus:ring-[#00ff00] focus:ring-opacity-50",
-                          selectedAnswer && "border-[#00ff00]"
-                        )}
-                      >
-                        <SelectValue
-                          placeholder="Select your answer..."
-                          className="text-gray-400"
-                        />
-                      </SelectTrigger>
-                      <SelectContent
-                        className="bg-[#121212] border-[#333333] text-white"
-                      >
-                        {shuffledOptions.map((option, index) => (
-                          <SelectItem
-                            key={index}
-                            value={option}
-                            className={cn(
-                              "hover:bg-[#1a1a1a] focus:bg-[#1a1a1a]",
-                              "cursor-pointer py-3 px-4",
-                              "data-[highlighted]:bg-[#1a1a1a]",
-                              "data-[highlighted]:text-[#00ff00]",
-                              selectedAnswer === option && "text-[#00ff00]"
-                            )}
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm opacity-75">{index + 1}.</span>
-                              {option}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    />
 
                     <Button
                       onClick={checkGuess}
@@ -669,9 +630,9 @@ export default function CodeGuessingGame() {
         </div>
       </CardFooter>
 
-      {showWhoa && (
-        <WhoaOverlay 
-          onComplete={() => setShowWhoa(false)} 
+      {showError && (
+        <ErrorFlash 
+          onComplete={() => setShowError(false)} 
         />
       )}
     </Card>
