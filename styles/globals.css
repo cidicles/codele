@@ -202,3 +202,112 @@ body {
 .feedback-message {
   animation: slideIn 0.3s ease-out;
 }
+
+.fade-out {
+  animation: matrixFadeOut 1s ease-out forwards;
+}
+
+@keyframes matrixFadeOut {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.1);
+  }
+}
+
+/* Custom range input styling */
+input[type="range"] {
+  height: 4px;
+  border-radius: 2px;
+  appearance: none;
+  background: rgba(0, 255, 0, 0.2);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  background: #00ff00;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+}
+
+/* Video container animation */
+@keyframes glowPulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(0, 255, 0, 0.4);
+  }
+}
+
+.video-container {
+  animation: glowPulse 2s infinite;
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-fade-out {
+  animation: fadeOut 0.5s ease-out forwards;
+}
+
+.animate-result-appear {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Matrix-style glow effect for correct emoji */
+.text-[#00ff00] {
+  text-shadow: 0 0 10px rgba(0, 255, 0, 0.5),
+               0 0 20px rgba(0, 255, 0, 0.3),
+               0 0 30px rgba(0, 255, 0, 0.1);
+}
+
+/* Red glow effect for incorrect emoji */
+.text-red-500 {
+  text-shadow: 0 0 10px rgba(255, 0, 0, 0.5),
+               0 0 20px rgba(255, 0, 0, 0.3),
+               0 0 30px rgba(255, 0, 0, 0.1);
+}

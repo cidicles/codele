@@ -12,6 +12,7 @@ import { functionChallenges } from "@/lib/function-challenges"
 import confetti from "canvas-confetti"
 import { cn } from "@/lib/utils"
 import MatrixParticles from "@/components/MatrixParticles"
+import WhoaOverlay from "@/components/WhoaOverlay"
 
 // Local storage keys
 const COMPLETED_CHALLENGES_KEY = "codele-completed-challenges"
@@ -30,8 +31,10 @@ export default function CodeGuessingGame() {
   const [noMoreChallenges, setNoMoreChallenges] = useState(false)
   const [todaysChallenge, setTodaysChallenge] = useState<number | null>(null)
   const [lastPlayedDate, setLastPlayedDate] = useState<string | null>(null)
-  const [gameMode, setGameMode] = useState<"daily" | "practice">("daily")
+  const [gameMode, setGameMode] = useState<"daily">('daily')
   const [shuffledOptions, setShuffledOptions] = useState<string[]>([])
+  const [showWhoa, setShowWhoa] = useState(false)
+  const [isTimeUp, setIsTimeUp] = useState(false)
 
   const maxRevealLevel = 5
 
@@ -153,37 +156,29 @@ export default function CodeGuessingGame() {
     setCurrentChallenge(availableChallenges[randomIndex].index)
   }
 
-  // Switch to daily challenge mode
-  const switchToDailyChallenge = () => {
-    if (todaysChallenge !== null) {
-      const challengeIndex = functionChallenges.findIndex((c) => c.id === todaysChallenge)
-      if (challengeIndex !== -1) {
-        resetChallenge(challengeIndex)
-        setGameMode("daily")
-      }
-    }
-  }
-
-  // Switch to practice mode
-  const switchToPracticeMode = () => {
-    selectRandomUnplayedChallenge()
-    setGameMode("practice")
-  }
-
   // Reset game state for a new challenge
   const resetChallenge = (nextIndex: number) => {
-    setCurrentChallenge(nextIndex)
-    setRevealLevel(1)
-    setSelectedAnswer("")
-    setFeedback(null)
-    setTimer(60)
-    setIsTimerRunning(true)
-    shuffleOptions(nextIndex)
+    // Ensure the index is valid
+    const validIndex = nextIndex % functionChallenges.length;
+    
+    // Reset all states
+    setCurrentChallenge(validIndex);
+    setRevealLevel(1);
+    setSelectedAnswer("");
+    setFeedback(null);
+    setTimer(60);
+    setIsTimerRunning(true);
+    setIsTimeUp(false);
+    
+    // Shuffle options for the new challenge
+    shuffleOptions(validIndex);
+    
+    // Reset any other game states
+    if (gameOver) setGameOver(false);
   }
 
   // Move to next challenge
   const nextChallenge = () => {
-    // Mark current challenge as completed
     if (currentChallenge !== null) {
       const currentChallengeId = functionChallenges[currentChallenge].id
       if (!completedChallenges.includes(currentChallengeId)) {
@@ -191,16 +186,13 @@ export default function CodeGuessingGame() {
       }
     }
 
-    // Reset feedback before moving to next challenge
     setFeedback(null)
+    setIsTimeUp(false)
     
-    if (gameMode === "daily") {
-      // If in daily mode and today's challenge is completed, switch to practice
-      switchToPracticeMode()
-    } else {
-      // In practice mode, get another random challenge
-      selectRandomUnplayedChallenge()
-    }
+    // Simply move to next challenge
+    const nextIndex = currentChallenge !== null ? 
+      (currentChallenge + 1) % functionChallenges.length : 0
+    resetChallenge(nextIndex)
   }
 
   // Restart the game
@@ -259,9 +251,12 @@ export default function CodeGuessingGame() {
       if (!completedChallenges.includes(currentChallengeId)) {
         setCompletedChallenges((prev) => [...prev, currentChallengeId])
       }
-    } else if (revealLevel < maxRevealLevel) {
-      // Reveal more of the function on incorrect guess
-      setRevealLevel((prevLevel) => prevLevel + 1)
+    } else {
+      // Show whoa overlay for incorrect answers
+      setShowWhoa(true)
+      if (revealLevel < maxRevealLevel) {
+        setRevealLevel((prevLevel) => prevLevel + 1)
+      }
     }
   }
 
@@ -273,7 +268,18 @@ export default function CodeGuessingGame() {
   // Reveal more of the function
   const revealMore = () => {
     if (revealLevel < maxRevealLevel) {
-      setRevealLevel((prevLevel) => prevLevel + 1)
+      const newRevealLevel = revealLevel + 1;
+      setRevealLevel(newRevealLevel);
+      
+      // If this reveal maxes out the reveals, trigger loss
+      if (newRevealLevel >= maxRevealLevel) {
+        setFeedback("incorrect");
+        setIsTimeUp(true);
+        setIsTimerRunning(false);
+        
+        // Show the whoa video
+        setShowWhoa(true);
+      }
     }
   }
 
@@ -287,6 +293,7 @@ export default function CodeGuessingGame() {
       }, 1000)
     } else if (timer === 0) {
       setIsTimerRunning(false)
+      setIsTimeUp(true)
       if (feedback !== "correct") {
         setRevealLevel(maxRevealLevel)
       }
@@ -315,6 +322,33 @@ export default function CodeGuessingGame() {
       day: "numeric",
     }
     return new Date().toLocaleDateString(undefined, options)
+  }
+
+  // Create a new component for the result emoji
+  const ResultEmoji = ({ isCorrect }: { isCorrect: boolean }) => {
+    const message = isCorrect 
+      ? "Excellent!" 
+      : revealLevel >= maxRevealLevel 
+        ? "Too many reveals!" 
+        : "Time's up!";
+
+    return (
+      <div className="animate-result-appear">
+        <div className={cn(
+          "text-8xl md:text-9xl font-mono transition-all duration-500",
+          "animate-float select-none",
+          isCorrect ? "text-[#00ff00]" : "text-red-500"
+        )}>
+          {isCorrect ? "^‿^" : "⊙︿⊙"}
+        </div>
+        <p className={cn(
+          "text-center mt-4 text-lg md:text-xl font-mono",
+          isCorrect ? "text-[#00ff00]" : "text-red-400"
+        )}>
+          {message}
+        </p>
+      </div>
+    )
   }
 
   // Render the "No more challenges" state
@@ -357,7 +391,7 @@ export default function CodeGuessingGame() {
             <div className="absolute -inset-1 bg-gradient-to-r from-[#00ff00]/0 via-[#00ff00]/10 to-[#00ff00]/0 
                             blur-lg z-0 animate-pulse-slow"></div>
           </div>
-          
+
           <div className="relative">
             <p className="text-gray-300 text-lg md:text-xl font-mono leading-relaxed">
               <span className="text-[#00ff00]">&gt;</span> Decode the mystery function
@@ -368,10 +402,16 @@ export default function CodeGuessingGame() {
             </p>
           </div>
         </div>
-
+        {isTodaysChallenge && (
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="bg-[#1a1a1a] text-[#00ff00] border-[#00ff00] mb-2">
+              Today's Challenge
+            </Badge>
+          </div>
+        )}
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <CardTitle className="text-white">{gameMode === "daily" ? "Daily Challenge" : "Practice Mode"}</CardTitle>
+            <CardTitle className="text-white">Daily Challenge</CardTitle>
             {isTodaysChallenge && (
               <Badge variant="outline" className="bg-[#1a1a1a] text-[#00ff00] border-[#00ff00]">
                 Today's Challenge
@@ -390,156 +430,199 @@ export default function CodeGuessingGame() {
             {challenge.difficulty}
           </Badge>
         </div>
-        <div className="flex items-center gap-2 mt-2">
-          <Progress 
-            value={(revealLevel / maxRevealLevel) * 100} 
-            className="h-2 bg-[#232323]"
-            indicatorClassName="bg-[#00ff00]"
-          />
-          <span className="text-sm text-gray-400 min-w-[45px]">{timer}s</span>
+        <div className="flex flex-col gap-2 mt-2">
+          <div className="flex items-center justify-between">
+            <span className={cn(
+              "text-sm font-medium",
+              revealLevel === maxRevealLevel - 1 ? "text-yellow-400" : "text-[#00ff00]",
+              revealLevel >= maxRevealLevel ? "text-red-400" : ""
+            )}>
+              Code Revealed: {Math.round((revealLevel / maxRevealLevel) * 100)}%
+            </span>
+            <span className="text-sm text-[#00ff00]">{timer}s</span>
+          </div>
+          <div className="relative">
+            <Progress 
+              value={(revealLevel / maxRevealLevel) * 100} 
+              className={cn(
+                "h-2.5 transition-colors duration-300",
+                revealLevel === maxRevealLevel - 1 ? "bg-yellow-900/20" : "bg-[#1a1a1a]",
+                revealLevel >= maxRevealLevel ? "bg-red-900/20" : ""
+              )}
+              indicatorClassName={cn(
+                "transition-all duration-300",
+                revealLevel === maxRevealLevel - 1 ? "bg-yellow-400" : "bg-[#00ff00]",
+                revealLevel >= maxRevealLevel ? "bg-red-400" : ""
+              )}
+            />
+            {revealLevel < maxRevealLevel && (
+              <div className="absolute -right-2 -top-1 animate-bounce">
+                <div className={cn(
+                  "text-xs rounded-full px-2 py-1 shadow-lg font-mono",
+                  revealLevel === maxRevealLevel - 1 
+                    ? "bg-yellow-400 text-black" 
+                    : "bg-[#00ff00] text-black"
+                )}>
+                  {maxRevealLevel - revealLevel} {maxRevealLevel - revealLevel === 1 ? 'reveal' : 'reveals'} left
+                </div>
+              </div>
+            )}
+          </div>
         </div>
+        {revealLevel === maxRevealLevel - 1 && (
+          <div className="mt-2 text-yellow-400 text-sm font-mono animate-pulse">
+            ⚠️ Warning: One more reveal will end the challenge!
+          </div>
+        )}
       </CardHeader>
 
       <CardContent className="pb-2">
-        <div className="mb-4 bg-[#1a1a1a] rounded-lg p-4">
-          <CodeDisplay 
-            code={getRevealedCode()} 
-            language="javascript"
-            theme="dark"
-          />
-        </div>
+        <div className="space-y-4">
+          <div className="mb-4 bg-[#1a1a1a] rounded-lg p-4">
+            <CodeDisplay
+              code={getRevealedCode()}
+              language="javascript"
+              theme="dark"
+            />
+          </div>
 
-        <div className="space-y-6">
-          <div className="bg-[#1a1a1a] rounded-lg p-6 border border-[#333333] shadow-lg">
-            <div className="mb-4">
-              <h3 className="text-[#00ff00] font-mono text-lg mb-2 flex items-center gap-2">
-                <span className="text-sm opacity-75">&gt;</span>
-                What does this function do?
-              </h3>
-              <p className="text-gray-400 text-sm">
-                Analyze the code and select the correct answer
-              </p>
-            </div>
+          <div className="flex justify-center">
+            <Button
+              variant="default"
+              size="lg"
+              onClick={revealMore}
+              disabled={revealLevel >= maxRevealLevel || feedback === "correct" || gameOver}
+              className={cn(
+                "font-semibold px-6 py-3 transition-all duration-200 transform hover:scale-105",
+                "flex items-center gap-2 relative",
+                "bg-[#00ff00] hover:bg-[#00dd00] text-black font-mono",
+                "border border-[#00ff00]",
+                "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100",
+                "shadow-[0_0_10px_rgba(0,255,0,0.3)]",
+                "w-full"
+              )}
+            >
+              <EyeIcon className="h-5 w-5" />
+              Reveal More
+              {revealLevel < maxRevealLevel && (
+                <span className="absolute -top-2 -right-2 bg-[#00ff00] text-black 
+                                rounded-full w-6 h-6 flex items-center justify-center 
+                                text-sm font-bold border border-[#00ff00] 
+                                animate-bounce shadow-glow">
+                  {maxRevealLevel - revealLevel}
+                </span>
+              )}
+            </Button>
+          </div>
 
-            <div className="space-y-4">
-              <Select
-                value={selectedAnswer}
-                onValueChange={setSelectedAnswer}
-                disabled={feedback === "correct" || gameOver}
-              >
-                <SelectTrigger 
-                  className={cn(
-                    "w-full bg-[#121212] text-white border-[#333333] h-12",
-                    "hover:border-[#00ff00] transition-colors duration-200",
-                    "focus:ring-1 focus:ring-[#00ff00] focus:ring-opacity-50",
-                    selectedAnswer && "border-[#00ff00]"
-                  )}
-                >
-                  <SelectValue 
-                    placeholder="Select your answer..." 
-                    className="text-gray-400"
-                  />
-                </SelectTrigger>
-                <SelectContent 
-                  className="bg-[#121212] border-[#333333] text-white"
-                >
-                  {shuffledOptions.map((option, index) => (
-                    <SelectItem 
-                      key={index} 
-                      value={option}
+          <div className="space-y-6">
+            <div className={cn(
+              "bg-[#1a1a1a] rounded-lg p-6 border border-[#333333] shadow-lg",
+              "transition-all duration-500",
+              (isTimeUp || feedback === "correct") && "animate-fade-out"
+            )}>
+              {!isTimeUp && feedback !== "correct" ? (
+                <>
+                  <div className="mb-4">
+                    <h3 className="text-[#00ff00] font-mono text-lg mb-2 flex items-center gap-2">
+                      <span className="text-sm opacity-75">&gt;</span>
+                      What does this function do?
+                    </h3>
+                    <p className="text-gray-400 text-sm">
+                      Analyze the code and select the correct answer
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <Select
+                      value={selectedAnswer}
+                      onValueChange={setSelectedAnswer}
+                      disabled={feedback === "correct" || gameOver}
+                    >
+                      <SelectTrigger
+                        className={cn(
+                          "w-full bg-[#121212] text-white border-[#333333] h-12",
+                          "hover:border-[#00ff00] transition-colors duration-200",
+                          "focus:ring-1 focus:ring-[#00ff00] focus:ring-opacity-50",
+                          selectedAnswer && "border-[#00ff00]"
+                        )}
+                      >
+                        <SelectValue
+                          placeholder="Select your answer..."
+                          className="text-gray-400"
+                        />
+                      </SelectTrigger>
+                      <SelectContent
+                        className="bg-[#121212] border-[#333333] text-white"
+                      >
+                        {shuffledOptions.map((option, index) => (
+                          <SelectItem
+                            key={index}
+                            value={option}
+                            className={cn(
+                              "hover:bg-[#1a1a1a] focus:bg-[#1a1a1a]",
+                              "cursor-pointer py-3 px-4",
+                              "data-[highlighted]:bg-[#1a1a1a]",
+                              "data-[highlighted]:text-[#00ff00]",
+                              selectedAnswer === option && "text-[#00ff00]"
+                            )}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm opacity-75">{index + 1}.</span>
+                              {option}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <Button
+                      onClick={checkGuess}
+                      disabled={!selectedAnswer || feedback === "correct" || gameOver}
                       className={cn(
-                        "hover:bg-[#1a1a1a] focus:bg-[#1a1a1a]",
-                        "cursor-pointer py-3 px-4",
-                        "data-[highlighted]:bg-[#1a1a1a]",
-                        "data-[highlighted]:text-[#00ff00]",
-                        selectedAnswer === option && "text-[#00ff00]"
+                        "w-full h-12 font-mono text-base transition-all duration-200",
+                        "bg-[#00ff00] text-black hover:bg-[#00dd00]",
+                        "disabled:opacity-50 disabled:cursor-not-allowed",
+                        "shadow-[0_0_10px_rgba(0,255,0,0.2)]",
+                        "flex items-center justify-center gap-2",
+                        !selectedAnswer && "animate-pulse"
                       )}
                     >
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm opacity-75">{index + 1}.</span>
-                        {option}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Button
-                onClick={checkGuess}
-                disabled={!selectedAnswer || feedback === "correct" || gameOver}
-                className={cn(
-                  "w-full h-12 font-mono text-base transition-all duration-200",
-                  "bg-[#00ff00] text-black hover:bg-[#00dd00]",
-                  "disabled:opacity-50 disabled:cursor-not-allowed",
-                  "shadow-[0_0_10px_rgba(0,255,0,0.2)]",
-                  "flex items-center justify-center gap-2",
-                  !selectedAnswer && "animate-pulse"
-                )}
-              >
-                {!selectedAnswer ? (
-                  <>
-                    <span>Choose an answer</span>
-                    <span className="animate-blink">_</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Submit Answer</span>
-                    <ArrowRight className="h-4 w-4" />
-                  </>
-                )}
-              </Button>
-
-              {feedback && (
-                <div
-                  className={cn(
-                    "mt-4 p-4 rounded-lg border transition-all duration-300",
-                    "font-mono text-sm",
-                    feedback === "correct" 
-                      ? "bg-[#0a2800] border-[#00ff00] text-[#00ff00]"
-                      : "bg-[#280000] border-red-500 text-red-400"
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    {feedback === "correct" ? (
-                      <>
-                        <Check className="h-5 w-5 shrink-0" />
-                        <div className="space-y-1">
-                          <p className="font-medium">Correct! Well done!</p>
-                          <p className="text-[#00ff00]/80 text-xs">
-                            The function {challenge.answer}
-                          </p>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <X className="h-5 w-5 shrink-0" />
-                        <div className="space-y-1">
-                          <p className="font-medium">Not quite right</p>
-                          <p className="text-red-400/80 text-xs">
-                            Try again or reveal more code
-                          </p>
-                        </div>
-                      </>
-                    )}
+                      {!selectedAnswer ? (
+                        <>
+                          <span>Choose an answer</span>
+                          <span className="animate-blink">_</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Submit Answer</span>
+                          <ArrowRight className="h-4 w-4" />
+                        </>
+                      )}
+                    </Button>
                   </div>
+                </>
+              ) : (
+                <div className="min-h-[200px] flex items-center justify-center">
+                  <ResultEmoji isCorrect={feedback === "correct"} />
                 </div>
               )}
             </div>
-          </div>
 
-          {/* Stats Section */}
-          <div className="grid grid-cols-2 gap-4 text-center">
-            <div className="bg-[#1a1a1a] rounded-lg p-4 border border-[#333333]">
-              <p className="text-[#00ff00] text-2xl font-mono mb-1">
-                {maxRevealLevel - revealLevel}
-              </p>
-              <p className="text-gray-400 text-sm">Reveals Left</p>
-            </div>
-            <div className="bg-[#1a1a1a] rounded-lg p-4 border border-[#333333]">
-              <p className="text-[#00ff00] text-2xl font-mono mb-1">
-                {timer}s
-              </p>
-              <p className="text-gray-400 text-sm">Time Left</p>
+            {/* Stats Section */}
+            <div className="grid grid-cols-2 gap-4 text-center">
+              <div className="bg-[#1a1a1a] rounded-lg p-4 border border-[#333333]">
+                <p className="text-[#00ff00] text-2xl font-mono mb-1">
+                  {maxRevealLevel - revealLevel}
+                </p>
+                <p className="text-gray-400 text-sm">Reveals Left</p>
+              </div>
+              <div className="bg-[#1a1a1a] rounded-lg p-4 border border-[#333333]">
+                <p className="text-[#00ff00] text-2xl font-mono mb-1">
+                  {timer}s
+                </p>
+                <p className="text-gray-400 text-sm">Time Left</p>
+              </div>
             </div>
           </div>
         </div>
@@ -547,70 +630,19 @@ export default function CodeGuessingGame() {
 
       <CardFooter className="flex flex-wrap justify-between gap-2 pt-2 border-t border-[#232323]">
         <div className="flex gap-2">
-          <Button
-            variant="default"
-            size="lg"
-            onClick={revealMore}
-            disabled={revealLevel >= maxRevealLevel || feedback === "correct" || gameOver}
-            className={cn(
-              "font-semibold px-6 py-3 transition-all duration-200 transform hover:scale-105",
-              "flex items-center gap-2 relative",
-              "bg-[#00ff00] hover:bg-[#00dd00] text-black font-mono",
-              "border border-[#00ff00]",
-              "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100",
-              "shadow-[0_0_10px_rgba(0,255,0,0.3)]",
-            )}
-          >
-            <EyeIcon className="h-5 w-5" />
-            Reveal More
-            {revealLevel < maxRevealLevel && (
-              <span className="absolute -top-2 -right-2 bg-[#00ff00] text-black 
-                              rounded-full w-6 h-6 flex items-center justify-center 
-                              text-sm font-bold border border-[#00ff00] 
-                              animate-bounce shadow-glow">
-                {maxRevealLevel - revealLevel}
-              </span>
-            )}
-          </Button>
           <Button 
             variant="outline" 
             size="lg" 
-            onClick={skipChallenge} 
-            disabled={gameOver}
+            onClick={() => {
+              resetChallenge(currentChallenge !== null ? 
+                (currentChallenge + 1) % functionChallenges.length : 0);
+            }}
             className="bg-[#232323] border-[#333333] text-white hover:bg-[#232323] hover:text-[#00ff00] 
-                      hover:border-[#00ff00] transition-colors"
+                      hover:border-[#00ff00] transition-colors flex items-center gap-2"
           >
-            <SkipForward className="h-4 w-4 mr-1" />
-            Skip
+            <ArrowRight className="h-4 w-4" />
+            Next Challenge
           </Button>
-        </div>
-
-        <div className="flex gap-2">
-          {gameMode === "practice" && (
-            <Button 
-              variant="outline" 
-              size="lg" 
-              onClick={switchToDailyChallenge} 
-              disabled={hasPlayedToday}
-              className="bg-[#232323] border-[#333333] text-white hover:bg-[#232323] hover:text-[#00ff00] 
-                        hover:border-[#00ff00] transition-colors disabled:opacity-50 
-                        disabled:hover:text-white disabled:hover:border-[#333333]"
-            >
-              <Calendar className="h-4 w-4 mr-1" />
-              Daily Challenge
-            </Button>
-          )}
-          {gameMode === "daily" && feedback === "correct" && (
-            <Button 
-              variant="outline" 
-              size="lg" 
-              onClick={switchToPracticeMode}
-              className="bg-[#232323] border-[#333333] text-white hover:bg-[#232323] hover:text-[#00ff00] 
-                        hover:border-[#00ff00] transition-colors"
-            >
-              Practice Mode
-            </Button>
-          )}
         </div>
 
         <div className="flex gap-2 ml-auto">
@@ -636,6 +668,12 @@ export default function CodeGuessingGame() {
           </Button>
         </div>
       </CardFooter>
+
+      {showWhoa && (
+        <WhoaOverlay 
+          onComplete={() => setShowWhoa(false)} 
+        />
+      )}
     </Card>
   )
 }
