@@ -662,6 +662,254 @@ export const functionChallenges: FunctionChallenge[] = [
     ],
     difficulty: "hard",
     category: "algorithm"
+  },
+  {
+    id: 21,
+    code: `function mystery(matrix) {
+  if (!Array.isArray(matrix) || !matrix.every(Array.isArray)) {
+    return [];
+  }
+  const rows = matrix.length;
+  const cols = matrix[0]?.length || 0;
+  const result = Array(cols).fill().map(() => Array(rows).fill(0));
+  
+  for (let i = 0; i < rows; i++) {
+    for (let j = 0; j < cols; j++) {
+      result[j][i] = matrix[i][j];
+    }
+  }
+  return result;
+}`,
+    answer: "transposes a matrix",
+    options: [
+      "transposes a matrix",
+      "rotates matrix 90 degrees",
+      "reverses matrix rows",
+      "flips matrix diagonally"
+    ],
+    difficulty: "medium",
+    category: "algorithm"
+  },
+  {
+    id: 22,
+    code: `function mystery(text, pattern) {
+  if (typeof text !== 'string' || typeof pattern !== 'string') {
+    return [];
+  }
+  const result = [];
+  let index = text.indexOf(pattern);
+  
+  while (index !== -1) {
+    result.push(index);
+    index = text.indexOf(pattern, index + 1);
+  }
+  return result;
+}`,
+    answer: "finds all occurrences of pattern in text",
+    options: [
+      "finds all occurrences of pattern in text",
+      "counts pattern matches",
+      "replaces pattern in text",
+      "splits text by pattern"
+    ],
+    difficulty: "medium",
+    category: "string"
+  },
+  {
+    id: 23,
+    code: `function mystery(arr) {
+  if (!Array.isArray(arr)) return [];
+  const result = [];
+  const seen = new Set();
+  
+  for (const num of arr) {
+    if (!seen.has(num)) {
+      seen.add(num);
+      result.push(num);
+    }
+  }
+  return result.sort((a, b) => a - b);
+}`,
+    answer: "removes duplicates and sorts array",
+    options: [
+      "removes duplicates and sorts array",
+      "finds unique elements only",
+      "sorts array in ascending order",
+      "removes invalid numbers"
+    ],
+    difficulty: "medium",
+    category: "array"
+  },
+  {
+    id: 24,
+    code: `function mystery(obj, path, defaultValue = undefined) {
+  if (typeof obj !== 'object' || obj === null) return defaultValue;
+  return path.split('.')
+    .reduce((acc, part) => 
+      acc && typeof acc === 'object' ? acc[part] : defaultValue, 
+    obj);
+}`,
+    answer: "safely gets nested object value by path",
+    options: [
+      "safely gets nested object value by path",
+      "sets nested object value",
+      "checks if path exists in object",
+      "creates nested object structure"
+    ],
+    difficulty: "medium",
+    category: "object"
+  },
+  {
+    id: 25,
+    code: `function mystery(arr) {
+  if (!Array.isArray(arr) || arr.length === 0) return null;
+  
+  const mid = Math.floor(arr.length / 2);
+  const sorted = [...arr].sort((a, b) => a - b);
+  
+  if (arr.length % 2 === 0) {
+    return (sorted[mid - 1] + sorted[mid]) / 2;
+  }
+  return sorted[mid];
+}`,
+    answer: "calculates median of array",
+    options: [
+      "calculates median of array",
+      "finds middle element",
+      "calculates average of array",
+      "finds mode of array"
+    ],
+    difficulty: "medium",
+    category: "math"
+  },
+  {
+    id: 26,
+    code: `async function mystery(fn, retries = 3, delay = 1000) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (attempt === retries) throw error;
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+}`,
+    answer: "retries failed async function with delay",
+    options: [
+      "retries failed async function with delay",
+      "delays function execution",
+      "handles async errors",
+      "creates async timeout"
+    ],
+    difficulty: "hard",
+    category: "async"
+  },
+  {
+    id: 27,
+    code: `function mystery(element) {
+  if (!(element instanceof Element)) return null;
+  
+  const rect = element.getBoundingClientRect();
+  const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+  const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+  
+  return {
+    top: rect.top + scrollTop,
+    left: rect.left + scrollLeft,
+    width: rect.width,
+    height: rect.height
+  };
+}`,
+    answer: "gets element's absolute position and size",
+    options: [
+      "gets element's absolute position and size",
+      "calculates element's relative position",
+      "measures element's dimensions",
+      "finds element's offset parent"
+    ],
+    difficulty: "hard",
+    category: "dom"
+  },
+  {
+    id: 28,
+    code: `function mystery(arr, k) {
+  if (!Array.isArray(arr) || arr.length === 0 || k <= 0) {
+    return [];
+  }
+  
+  const freqMap = new Map();
+  for (const num of arr) {
+    freqMap.set(num, (freqMap.get(num) || 0) + 1);
+  }
+  
+  return [...freqMap.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, k)
+    .map(([num]) => num);
+}`,
+    answer: "finds k most frequent elements",
+    options: [
+      "finds k most frequent elements",
+      "finds k largest elements",
+      "sorts elements by frequency",
+      "returns top k unique elements"
+    ],
+    difficulty: "hard",
+    category: "algorithm"
+  },
+  {
+    id: 29,
+    code: `function mystery(date1, date2) {
+  if (!(date1 instanceof Date) || !(date2 instanceof Date)) {
+    return 0;
+  }
+  
+  const oneDay = 24 * 60 * 60 * 1000;
+  const weekends = [];
+  const start = new Date(Math.min(date1, date2));
+  const end = new Date(Math.max(date1, date2));
+  
+  for (let d = start; d <= end; d.setDate(d.getDate() + 1)) {
+    if (d.getDay() === 0 || d.getDay() === 6) {
+      weekends.push(new Date(d));
+    }
+  }
+  return weekends.length;
+}`,
+    answer: "counts weekends between two dates",
+    options: [
+      "counts weekends between two dates",
+      "calculates business days",
+      "finds total days between dates",
+      "checks if dates are in same week"
+    ],
+    difficulty: "hard",
+    category: "date"
+  },
+  {
+    id: 30,
+    code: `function mystery(str) {
+  if (typeof str !== 'string') return false;
+  
+  const cleanStr = str.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const len = cleanStr.length;
+  
+  for (let i = 0; i < Math.floor(len / 2); i++) {
+    if (cleanStr[i] !== cleanStr[len - 1 - i]) {
+      return false;
+    }
+  }
+  return true;
+}`,
+    answer: "checks if string is palindrome (ignoring non-alphanumeric)",
+    options: [
+      "checks if string is palindrome (ignoring non-alphanumeric)",
+      "validates string characters",
+      "reverses string content",
+      "removes special characters"
+    ],
+    difficulty: "medium",
+    category: "string"
   }
 ]
 
