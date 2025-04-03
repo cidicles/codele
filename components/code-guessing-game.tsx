@@ -413,11 +413,6 @@ export default function CodeGuessingGame() {
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
             <CardTitle className="text-white">Daily Challenge</CardTitle>
-            {isTodaysChallenge && (
-              <Badge variant="outline" className="bg-[#1a1a1a] text-[#00ff00] border-[#00ff00]">
-                Today's Challenge
-              </Badge>
-            )}
           </div>
           <Badge variant="outline" className="ml-auto text-white border-white">
             Score: {score}
